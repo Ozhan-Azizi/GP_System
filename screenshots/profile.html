@@ -1,0 +1,230 @@
+<?php
+
+require_once 'all.php';
+$result = queryMysql("SELECT * FROM profile WHERE user='$user'");
+if(!$loggedin)
+{
+    //die("<div class='main'>You are not logged in</div>");
+    die("
+<!DOCTYPE html>
+<head>
+    <title>Profile</title>
+    <link href='http://fonts.googleapis.com/css?family=Oswald:400,300' rel='stylesheet'>
+    <link href='http://s3.amazonaws.com/codecademy-content/courses/ltp2/css/bootstrap.min.css' rel='stylesheet'>
+    <link href='all.css' rel='stylesheet'>
+</head>
+<body>
+        <div class='topbar'>
+            <div class='container'>
+                <ul class='menu'>
+                    <li><a href='index.php'>Home</a></li>
+                    <li><a href='login.php'>Log in</a></li>
+                    <li><a href='signup.php'>Sign up</a></li>
+                    <li><a href='thread.php'>Create Thread</a></li>
+                </ul>                
+            </div>
+        </div>
+        <div class='main'>
+            <p> You are not logged in</p>
+            
+        </div>
+        
+</body>
+            </html>
+    ");
+} // checked if logged in
+
+$user = $_SESSION['user'];
+$queryResult = queryMysql("SELECT * FROM profile where user='$user'");
+$num = $_SESSION['user_id'];
+    if(isset($_POST['text']))
+    {
+       // $details = sanitizeString($_POST['text']);
+        //$details = preg_replace('/\s\s+/', ' ', $details);
+        //$det = $details;
+        $details = $_POST['text'];
+        if($result->num_rows)
+        {
+            queryMysql("UPDATE profile SET details='$details' where user='$user'");
+        }
+        else
+        {
+            queryMysql("INSERT INTO profile VALUES('$user','$details','$num')");
+        }
+    }
+    else 
+    {
+        if ($result->num_rows)
+            {
+              $row  = $result->fetch_array(MYSQLI_ASSOC);
+              $details = $row['details'];
+            }
+            else 
+            {
+                $details = "";  
+            }       
+    }
+
+ //    $detailsPrint = stripslashes(preg_replace('/\s\s+/', ' ', $details));
+
+  if (isset($_FILES['image']['name']))
+  {
+    $saveto = "$user.jpg";
+    move_uploaded_file($_FILES['image']['tmp_name'], $saveto);
+    $typeok = TRUE;
+
+    switch($_FILES['image']['type'])
+    {
+      case "image/gif":   $src = imagecreatefromgif($saveto); break;
+      case "image/jpeg":  // Both regular and progressive jpegs
+      case "image/pjpeg": $src = imagecreatefromjpeg($saveto); break;
+      case "image/png":   $src = imagecreatefrompng($saveto); break;
+      default:            $typeok = FALSE; break;
+    }
+
+    if ($typeok)
+    {
+      list($w, $h) = getimagesize($saveto);
+
+      $max = 500;
+      $tw  = $w;
+      $th  = $h;
+
+      if ($w > $h && $max < $w)
+      {
+        $th = $max / $w * $h;
+        $tw = $max;
+      }
+      elseif ($h > $w && $max < $h)
+      {
+        $tw = $max / $h * $w;
+        $th = $max;
+      }
+      elseif ($max < $w)
+      {
+        $tw = $th = $max;
+      }
+
+      $tmp = imagecreatetruecolor($tw, $th);
+      imagecopyresampled($tmp, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
+      imageconvolution($tmp, array(array(-1, -1, -1),
+        array(-1, 16, -1), array(-1, -1, -1)), 8, 0);
+      imagejpeg($tmp, $saveto);
+      imagedestroy($tmp);
+      imagedestroy($src); 
+        }
+        
+    }
+
+
+echo <<<_END
+<!DOCTYPE html>
+<head>
+    <title>Profile</title>
+    <link href="profile.css" rel="stylesheet">
+    <link href='http://fonts.googleapis.com/css?family=Oswald:400,300' rel='stylesheet'>
+    <link href="http://s3.amazonaws.com/codecademy-content/courses/ltp2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type='text/javascript' src='jquery.js'></script>
+    <script src='menu.js'></script>
+  
+</head>
+<body>
+    <div class='overbody'>
+        <div class='topbar'>
+            <div class='container'>
+                <ul class='menu'>
+                    <li><a href='index.php'>Home</a></li>
+                    <li><a href='logout.php'>Log out</a></li>
+                    <li>Welcome: $user</li>
+                    <li><a href='delete.php'>Delete Account</a></li>
+                    <li><a href='thread.php'>Create Thread</a></li>
+                    <li><a href='mythread.php?view=$user'>My threads</a></li>
+                    <li><a href='chooseThreads.php'>Choose to Display Threads</a></li>
+                    <li class="dropdown">
+                        <a href='#' class='dropdown-toggle'>Me<b class='caret'></b></a>
+                        <ul class='dropdown-menu'>
+                            <li><a href="profile.php">Profile</a></li>
+                            <li><a href='photos.php'>My Photos</a></li>
+                            <li><a href='myvideos.php'>My videos</a></li>
+                            <li><a href='watching.php'>Watching</a></li>
+                            <li><a href='watchers.php'>My Watchers</a></li>
+                            <li><a href='groups.php'>My Groups</a></li>
+                            <li><a href="mythread.php">My Threads</a></li>
+                            <li><a href="logout.php">Log out</a></li>
+                            <li><a href='messages.php'>Messages</a></li>
+                        </ul>
+                    </li>
+                </ul>                
+            </div>
+        </div>
+        <br>    
+            <div class='slider'><br><br>
+                <div class='main'>
+_END;
+showPicture($user);
+//$det = $_SESSION['details'];
+    echo <<<_BA
+                    
+                    <div id='main2'>
+                        <form method='post' action='profile.php' enctype='multipart/form-data'>
+                        Upload New Profile Picture: <input type='file' name='image' size='14'>
+                        <input type='submit' value='Save Picture'>
+                        </form>
+                    </div>
+                </div>
+
+                <div class='details'>
+                <textarea rows='5' readonly="readonly"> $details </textarea>
+                <br>
+                <form method='post' action='profile.php'>$error
+                <span class='putdetails'>Details</span>
+                <br>
+                <textarea name='text' rows='5' value='$details'> </textarea>
+                <input type='submit' value='Update'>
+                </form>
+                
+                </div>
+            </div>
+            <h6 id='watchtitle'>WATCHING</h6>
+            <div class='watchingBox'>
+_BA;
+            viewWatching($user);
+    echo <<<_BA
+            <br>
+            <a id='viewMembers' href="viewWatching?view=$user">View All Watching Members</a>
+            </div>
+            
+            <h6 id='watcherstitle'>WATCHERS</h6>
+            <div class='watchersBox'>
+_BA;
+            viewWatchers($user);
+    echo <<<_BA
+            <br>
+            <a id='viewWatchers' href="viewWatchers?view=$user">View All Watchers</a>
+            </div>
+            
+            <h6 id='grouptitle'>MY GROUPS</h6>
+            <div class='groupsBox'>
+            
+            </div>
+            
+            <form method='post' action='photos.php?view=$user'>
+                <input type='submit' class='toPics' value='My Photos'>
+            </form>
+            
+            <div class='topPosts'>
+            
+            </div>
+            
+            <div class='topMessages'>
+            
+            </div>
+            
+        </div>
+</body>
+</html>
+
+_BA;
+?>
+
